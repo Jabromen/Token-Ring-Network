@@ -196,6 +196,10 @@ int addMessage(const char *message, messages_t *msg) {
 	// Allocate memory for message string
 	int message_size = strlen(message) + 1;
 	msg->messages[index] = (char*) malloc(message_size * sizeof(char));
+	
+	if (msg->messages[index] == NULL) {
+		return 1;
+	}
 
 	// Copy message string into cache
 	strcpy(msg->messages[index], message);
@@ -218,7 +222,7 @@ int writeUserMessage(const char *prompt, int num, token_t *tkn) {
 
 	// Read user message from stdin
 	while (1) {
-		fgets(line, MAX_MESSAGE_SIZE, stdin);
+		fgets(line, BUFFER_SIZE, stdin);
 		if (!strcmp(line, "\n")) {
 			break;
 		}
