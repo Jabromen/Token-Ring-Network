@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#include "UDPLib.h"
 #define BUFFER_SIZE 512
 
 
@@ -12,47 +7,68 @@ void readMessage(FILE *messageFile);
 void listMessage(FILE *messageFile);
 void leaveBoard(FILE *messageFile);
 void writeToFile(FILE *messageFile,char userString[]);
+void writeInitialBuffer(char *IP,int Port,char *buffer);
 
 
 int main(int argc, char** argv)
 {
 
     char hostname[32];
-    int sockfd;
+    
     char buffer[BUFFER_SIZE];
-    struct sockaddr_in dest;
-//    struct hostent *hostptr;
-    printf("\nIP is %s\n",argv[1]);
     
-    sockfd=socket (AF_INET, SOCK_DGRAM,0);
-    if(sockfd<0)
+    char newPeer[32];
+    char thisPort[6];
+    char hostIP[32];
+    char hostPort[6];
+    char fileName[32];
+    fprintf(stderr,"\nbefore strcpy of arg1\n");
+    strcpy(newPeer,argv[1]);
+    fprintf(stderr,"\nbefore strcpy of arg2\n");
+    strcpy(thisPort,argv[2]);
+    fprintf(stderr,"\nbefore strcpy of arg3\n");
+    strcpy(hostIP,argv[3]);
+    fprintf(stderr,"\nbefore strcpy of arg4\n");
+    strcpy(hostPort,argv[4]);
+    fprintf(stderr,"\nbefore strcpy of arg5\n");
+    strcpy(fileName,argv[5]);
+    fprintf(stderr,"\nafter strcpy of arguments\n");
+    gethostname(hostname,32);
+    
+    //send host info to server
+    writeInitialBuffer(hostname,atoi(thisPort),buffer);
+    fprintf(stderr,"\nafter writebuffer\n");
+    sendMessage(hostIP,(u_short)atoi(hostPort),buffer);
+    fprintf(stderr,"\nafter sendmessage\n");
+    
+    receiveMessage((u_short)atoi(thisPort),buffer);
+    fprintf(stderr,"\nafter receivemessage\n");
+    printf("\nReceived: [%s]\n",buffer);
+    
+}
+
+void writeInitialBuffer(char *IP,int Port,char *buffer)
+{
+    int i=0;
+    int j=0;
+    char PortString[10];
+
+    snprintf(PortString,6,"%d",Port);
+
+    while(IP[i]!='\0')
     {
-        perror("sendUDP:socket");
-        return -1;
+        buffer[i]=IP[i];
+        i++;
     }
-    struct hostent *hostptr=gethostbyname(argv[1]);
+    buffer[i]=' ';
 
+    while(PortString[j]!='\0')
+    {
+        i++;
+        buffer[i]=PortString[j];
+        j++;
+    }
+    i++;
 
-    fprintf(stderr,"\nStarting memset\n");
-    
-    memset((void *) &dest, 0, (size_t)sizeof(dest));
-    
-    dest.sin_family=(short)(AF_INET);
-    
-    memcpy((void*)&dest.sin_addr,(void*)hostptr->h_addr,hostptr->h_length);
-    dest.sin_port=htons((u_short)60000);
-    
-    fprintf(stderr,"\ngetting message\n");
-    printf("\nWhat is the message? ");
-    fgets(buffer,500,stdin);
-    printf("\n\nSending %s\n",buffer);
-    sendto(sockfd,buffer,BUFFER_SIZE,0,
-            (struct sockaddr*) &dest,(socklen_t)sizeof(dest));
-            
-    bzero(buffer,BUFFER_SIZE);
-    recvfrom(sockfd,buffer,BUFFER_SIZE,0,NULL,NULL);
-    printf("\nReceived %s\n",buffer);
-    close(sockfd);
-    
-    
+    buffer[i]='\0';
 }
