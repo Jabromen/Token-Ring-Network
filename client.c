@@ -1,4 +1,5 @@
 #include "UDPLib.h"
+#include "client.h"
 #define BUFFER_SIZE 512
 
 
@@ -9,44 +10,32 @@ void leaveBoard(FILE *messageFile);
 void writeToFile(FILE *messageFile,char userString[]);
 void writeInitialBuffer(char *IP,int Port,char *buffer);
 
-
-int main(int argc, char** argv)
+/*
+    This function handles initial communication with server, sending
+    own hostname and port number then receiving the initial neighbor information
+*/
+void initialize(struct args *arguments)
 {
 
-    char hostname[32];
-    
-    char buffer[BUFFER_SIZE];
-    
-    char newPeer[32];
-    char thisPort[6];
-    char hostIP[32];
-    char hostPort[6];
-    char fileName[32];
-    fprintf(stderr,"\nbefore strcpy of arg1\n");
-    strcpy(newPeer,argv[1]);
-    fprintf(stderr,"\nbefore strcpy of arg2\n");
-    strcpy(thisPort,argv[2]);
-    fprintf(stderr,"\nbefore strcpy of arg3\n");
-    strcpy(hostIP,argv[3]);
-    fprintf(stderr,"\nbefore strcpy of arg4\n");
-    strcpy(hostPort,argv[4]);
-    fprintf(stderr,"\nbefore strcpy of arg5\n");
-    strcpy(fileName,argv[5]);
-    fprintf(stderr,"\nafter strcpy of arguments\n");
-    gethostname(hostname,32);
-    
+    fprintf(stderr,"newPeer is [%s]",arguments->newPeer);
     //send host info to server
-    writeInitialBuffer(hostname,atoi(thisPort),buffer);
+    fprintf(stderr,"\nIn initialize\n");
+    writeInitialBuffer(arguments->hostname,atoi(arguments->thisPort),arguments->buffer);
     fprintf(stderr,"\nafter writebuffer\n");
-    sendMessage(hostIP,(u_short)atoi(hostPort),buffer);
+    
+    fprintf(stderr,"\nsending to [%s] on port [%s] with message [%s]",arguments->hostIP,arguments->hostPort,arguments->buffer);
+    
+    sendMessage(arguments->hostIP,(u_short)atoi(arguments->hostPort),arguments->buffer);
     fprintf(stderr,"\nafter sendmessage\n");
     
-    receiveMessage((u_short)atoi(thisPort),buffer);
+    receiveMessage((u_short)atoi(arguments->thisPort),arguments->buffer);
     fprintf(stderr,"\nafter receivemessage\n");
-    printf("\nReceived: [%s]\n",buffer);
-    
+    printf("\nReceived: [%s]\n",arguments->buffer);
 }
 
+/*
+    This function creates a send buffer with own hostname and port to send to server
+*/
 void writeInitialBuffer(char *IP,int Port,char *buffer)
 {
     int i=0;

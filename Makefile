@@ -1,17 +1,14 @@
-CFLAGS = -g -Wall
-CC = gcc
+bbclient: driver.o client.o menu.o UDPLib.o
+	gcc -pthread -o bbclient driver.o client.o menu.o UDPLib.o
+    
+driver: driver.c
+	gcc driver.c
 
-objects = read_token.o read_token_test.o
+client.o: client.c client.h
+	gcc -c client.c
 
-read_token: $(objects)
-	$(CC) $(CFLAGS) -o read_token $(objects)
-
-read_token_test.o: read_token_test.c
-	$(CC) $(CFLAGS) -c read_token_test.c
-
-read_token.o: read_token.c
-	$(CC) $(CFLAGS) -c read_token.c
-
-.PHONY: clean
-clean:
-	rm read_token $(objects)
+menu.o: menu.c menu.h
+	gcc -c menu.c
+    
+UDPLib.o: UDPLib.c UDPLib.h
+	gcc -c UDPLib.c

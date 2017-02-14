@@ -24,8 +24,8 @@ int main(int argc, char** argv)
     char hostsIP[32][MAXHOSTS];
     u_short  hostsPort[5][MAXHOSTS];
     char IP[BUFFER_SIZE];
-    char neighborIP[16];
-    char sendIP[16];
+    char neighborIP[32];
+    char sendIP[32];
     int Port;
     int sendPort;
     int neighborPort;
@@ -41,20 +41,26 @@ int main(int argc, char** argv)
         *hostsPort[i]=getPort(buffer);
     }
     
+    for(i=0;i<numHosts;i++)
+    {
+        printf("\nHost %d is %s\n",i,hostsIP[i]);
+    }
+    
     //send neighbor info to hosts
     for(i=0;i<numHosts-1;i++)
     {
         
-        
+        fprintf(stderr,"\ni is %d",i);
         //get IP and port to send to
         strcpy(neighborIP,hostsIP[i+1]);
         neighborPort=*hostsPort[i+1];
         
         strcpy(sendIP,hostsIP[i]);
         sendPort=*hostsPort[i];
-        
+     //   printf(stderr,"\nIP is %s, sendIP is %s",hostsIP[i],sendIP);
+     //   fprintf(stderr,"\nIP is %s, neighborIP is %s",hostsIP[i+1],neighborIP);
         writeBuffer(neighborIP,neighborPort,buffer);
-        
+        fprintf(stderr,"\nSending [%s]\n",buffer);
         sendMessage(sendIP,sendPort,buffer);
     }
     
@@ -64,17 +70,20 @@ int main(int argc, char** argv)
     
     strcpy(sendIP,hostsIP[i]);
     sendPort=*hostsPort[i];
-        
+  //  fprintf(stderr,"\nIP is %s, neighborIP is %s",hostsIP[0],neighborIP);
     writeBuffer(neighborIP,neighborPort,buffer);
-    
+ //   fprintf(stderr,"\nSending [%s]\n",buffer);
     sendMessage(sendIP,sendPort,buffer);
     
-    for(i=0;i<numHosts;i++)
-    {
-        printf("\nHost %d is %s\n",i,hostsIP[i]);
-    }
+ //   for(i=0;i<numHosts;i++)
+ //   {
+ //       printf("\nHost %d is %s\n",i,hostsIP[i]);
+ //   }
 }
 
+/*
+    Pull the IP address/hostname out of the received message
+*/
 void getIP(char *tokenString, char IP[16])
 {
     int i=0;
@@ -87,6 +96,9 @@ void getIP(char *tokenString, char IP[16])
     IP[i]='\0';
 }
 
+/*
+    Pull the port number out of the received message, then return it as an int
+*/
 int getPort(char *tokenString)
 {
     int port;
@@ -113,8 +125,14 @@ int getPort(char *tokenString)
     return port;
 }
 
+
+/*
+    This function writes the passed IP address and port into the buffer
+    to format for sending
+*/
 void writeBuffer(char *neighborIP,int neighborPort,char *buffer)
 {
+ //   fprintf(stderr,"\n\nIn writebuffer\n");
     int i=0;
     int j=0;
     char neighborPortString[10];
@@ -123,6 +141,7 @@ void writeBuffer(char *neighborIP,int neighborPort,char *buffer)
 
     while(neighborIP[i]!='\0')
     {
+//        fprintf(stderr,"\nWriting %c to buffer",neighborIP[i]);
         buffer[i]=neighborIP[i];
         i++;
     }
@@ -131,6 +150,7 @@ void writeBuffer(char *neighborIP,int neighborPort,char *buffer)
     while(neighborPortString[j]!='\0')
     {
         i++;
+ //       fprintf(stderr,"\nWriting %c to buffer",neighborPortString[i]);
         buffer[i]=neighborPortString[j];
         j++;
     }
