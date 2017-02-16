@@ -1,14 +1,14 @@
-bbclient: driver.o client.o menu.o UDPLib.o
-	gcc -pthread -o bbclient driver.o client.o menu.o UDPLib.o
-    
-driver: driver.c
-	gcc driver.c
+CFLAGS = -g -Wall
+CC = gcc
 
-client.o: client.c client.h
-	gcc -c client.c
+all: bbpeer bbserver
 
-menu.o: menu.c menu.h
-	gcc -c menu.c
-    
-UDPLib.o: UDPLib.c UDPLib.h
-	gcc -c UDPLib.c
+bbpeer:	peer.c udpsockets.c queue.c read_token.c
+	$(CC) $(CFLAGS) -pthread -o bbpeer peer.c udpsockets.c queue.c read_token.c
+
+bbserver: server.c udpsockets.c
+	$(CC) $(CFLAGS) -o bbserver server.c udpsockets.c
+
+.PHONY: clean
+clean:
+	rm bbpeer bbserver

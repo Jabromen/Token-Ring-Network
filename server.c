@@ -1,160 +1,63 @@
-#include "UDPLib.h"
-#define BUFFER_SIZE 512
-#define MAXHOSTS 20
+#include "udpsockets.h"
 
-
-void writeMessage(FILE *messageFile);
-void readMessage(FILE *messageFile);
-void listMessage(FILE *messageFile);
-void leaveBoard(FILE *messageFile);
-void writeToFile(FILE *messageFile,char userString[]);
-
-int getPort(char *tokenString);
-void getIP(char *tokenString,char IP[32]);
-void writeBuffer(char *neighborIP,int neighborPort,char *buffer);
-
-
-int main(int argc, char** argv)
-{
+int main (int argc, char** argv) {
     
-    
-    int i;
-    
-    int numHosts;
-    char hostsIP[32][MAXHOSTS];
-    u_short  hostsPort[5][MAXHOSTS];
-    char IP[BUFFER_SIZE];
-    char neighborIP[32];
-    char sendIP[32];
-    int Port;
-    int sendPort;
-    int neighborPort;
-    char buffer[BUFFER_SIZE];
-
-    numHosts=atoi(argv[2]);
-    
-    //get hotnames and ports from clients, however many were passed
-    for(i=0;i<numHosts;i++)
-    {
-        receiveMessage(60002,buffer);
-        getIP(buffer,hostsIP[i]);
-        *hostsPort[i]=getPort(buffer);
-    }
-    
-    for(i=0;i<numHosts;i++)
-    {
-        printf("\nHost %d is %s\n",i,hostsIP[i]);
-    }
-    
-    //send neighbor info to hosts
-    for(i=0;i<numHosts-1;i++)
-    {
-        
-        fprintf(stderr,"\ni is %d",i);
-        //get IP and port to send to
-        strcpy(neighborIP,hostsIP[i+1]);
-        neighborPort=*hostsPort[i+1];
-        
-        strcpy(sendIP,hostsIP[i]);
-        sendPort=*hostsPort[i];
-     //   printf(stderr,"\nIP is %s, sendIP is %s",hostsIP[i],sendIP);
-     //   fprintf(stderr,"\nIP is %s, neighborIP is %s",hostsIP[i+1],neighborIP);
-        writeBuffer(neighborIP,neighborPort,buffer);
-        fprintf(stderr,"\nSending [%s]\n",buffer);
-        sendMessage(sendIP,sendPort,buffer);
-    }
-    
-    //send info to last client (neighbor info is first host)
-    strcpy(neighborIP,hostsIP[0]);
-    neighborPort=*hostsPort[0];
-    
-    strcpy(sendIP,hostsIP[i]);
-    sendPort=*hostsPort[i];
-  //  fprintf(stderr,"\nIP is %s, neighborIP is %s",hostsIP[0],neighborIP);
-    writeBuffer(neighborIP,neighborPort,buffer);
- //   fprintf(stderr,"\nSending [%s]\n",buffer);
-    sendMessage(sendIP,sendPort,buffer);
-    
- //   for(i=0;i<numHosts;i++)
- //   {
- //       printf("\nHost %d is %s\n",i,hostsIP[i]);
- //   }
-}
-
-/*
-    Pull the IP address/hostname out of the received message
-*/
-void getIP(char *tokenString, char IP[16])
-{
-    int i=0;
-    printf("\n");
-    while(tokenString[i]!=' ')
-    {
-        IP[i]=tokenString[i];
-        i++;
-    }
-    IP[i]='\0';
-}
-
-/*
-    Pull the port number out of the received message, then return it as an int
-*/
-int getPort(char *tokenString)
-{
-    int port;
-    int i=0;
-    int j=0;
-    
-    char tempString[5];
-    
-    while(tokenString[i]!=' ')
-    {
-        i++;
+    // Check if enough arguments
+    if (argc < 3) {
+        printf("ERROR: Not enough arguments. Use format:\n"
+               "\"portNum numberOfHosts\"\n");
+        exit(EXIT_FAILURE);
     }
 
-    while(tokenString[i]!='\0')
-    {
+    // Parse command line arguments
+    u_short my_port  = (u_short) atoi(argv[1]);
+    int     numHosts =           atoi(argv[2]);
 
-        tempString[j]=tokenString[i];
-        j++;
-        i++;
+    // Create UDP socket
+    udpsocket_t *sckt = initUdpSocket(my_port);
+
+    if (!sckt)
+        exit(EXIT_FAILURE);
+
+    // Array the will hold the address and port for each host joining
+    struct sockaddr_in hostAddrs[numHosts];
+
+    // Buffer to receive and send messages
+    char buffer[128];
+    // Number of bytes received
+    int recvlen;
+
+    // Loop until the specified number of join requests are made
+    int i = 0;
+    while (i < numHosts) {
+        // Clear buffer and receive message
+        memset(buffer, 0, 128);
+        recvlen = receiveMessage(buffer, 128, sckt);
+
+        // Check if received message is a join request
+        if (recvlen > 0 && !strcmp(buffer, "JOIN")) {
+            // If so, add host to address array
+            hostAddrs[i++] = sckt->remaddr;
+            printf("Host #%d Joined\n", i);
+        }
     }
 
-    port=atoi(tempString);
-
-    return port;
-}
-
-
-/*
-    This function writes the passed IP address and port into the buffer
-    to format for sending
-*/
-void writeBuffer(char *neighborIP,int neighborPort,char *buffer)
-{
- //   fprintf(stderr,"\n\nIn writebuffer\n");
-    int i=0;
-    int j=0;
-    char neighborPortString[10];
-
-    snprintf(neighborPortString,6,"%d",neighborPort);
-
-    while(neighborIP[i]!='\0')
-    {
-//        fprintf(stderr,"\nWriting %c to buffer",neighborIP[i]);
-        buffer[i]=neighborIP[i];
-        i++;
+    // Send peer address and port to first 'numHosts - 1' hosts
+    for (i = 0; i < numHosts - 1; i++) {
+        memset(buffer, 0, 128);
+        makeAddrString(buffer, "PEER", &sckt->myaddr, &hostAddrs[i + 1]);
+        sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[i], sckt->addrlen);
     }
-    buffer[i]=' ';
 
-    while(neighborPortString[j]!='\0')
-    {
-        i++;
- //       fprintf(stderr,"\nWriting %c to buffer",neighborPortString[i]);
-        buffer[i]=neighborPortString[j];
-        j++;
-    }
-    i++;
+    // Send peer address and port to last host
+    memset(buffer, 0, 128);
+    makeAddrString(buffer, "PEER", &sckt->myaddr, &hostAddrs[0]);
+    sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[i], sckt->addrlen);
 
-    buffer[i]='\0';
+    // Tell the first host that joined to create and send the token
+    memset(buffer, 0, 128);
+    strcpy(buffer, "GO");
+    sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[0], sckt->addrlen);
+
+    exit(EXIT_SUCCESS);
 }

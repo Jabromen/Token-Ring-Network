@@ -96,7 +96,7 @@ int addMessage(const char *message, messages_t *msg);
  * @param: tkn: Token struct.
  * @return: Returns 0 if success, 1 if failed.
  */
-int writeUserMessage(const char *prompt, int num, token_t *tkn);
+//int writeUserMessage(const char *prompt, int num, token_t *tkn);
 
 /*
  * Appends a message string to token file.
