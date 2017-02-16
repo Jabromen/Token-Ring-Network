@@ -97,9 +97,9 @@ int parseMessage(char *message, addrport_t *ap) {
 	}
 
 	if (i == 5 && !strcmp(token[0], "PEER")) {
-		ap->oldaddr = (u_long)  atoi(token[1]);
+		ap->oldaddr = (unsigned int)  atoi(token[1]);
 		ap->oldport = (u_short) atoi(token[2]);
-		ap->newaddr = (u_long)  atoi(token[3]);
+		ap->newaddr = (unsigned int)  atoi(token[3]);
 		ap->newport = (u_short) atoi(token[4]);
 
 		return 1;

@@ -38,6 +38,9 @@ void writeUserMessage(const char *prompt);
 messages_t *message_cache;
 queue_t *message_queue;
 queue_t *peer_queue;
+
+sem_t message_queue_lock;
+
 int running;
 
 int main(int argc, char **argv) {
@@ -65,20 +68,29 @@ int main(int argc, char **argv) {
 	pthread_t ui_thread;
 	pthread_t network_thread;
 
-	running = 1;
-
-	if ((err = pthread_create(&ui_thread, NULL, &uiThread, (void *) &args))) {
-		fprintf(stderr, "Can't create UI thread: [%s]\n", strerror(err));
+	if(sem_init(&message_queue_lock, 0, 1) != 0) {
+		printf("Sem init failed.\n");
 		exit(EXIT_FAILURE);
 	}
+
+	running = 1;
 
 	if ((err = pthread_create(&network_thread, NULL, &networkThread, (void *) &args))) {
 		fprintf(stderr, "Can't create Network Thread: [%s]\n", strerror(err));
 		exit(EXIT_FAILURE);
 	}
 
+	if ((err = pthread_create(&ui_thread, NULL, &uiThread, (void *) &args))) {
+		fprintf(stderr, "Can't create UI thread: [%s]\n", strerror(err));
+		exit(EXIT_FAILURE);
+	}
+
 	pthread_join(ui_thread, NULL);
 	pthread_join(network_thread, NULL);
+
+	freeQueue(message_queue);
+	freeQueue(peer_queue);
+	sem_destroy(&message_queue_lock);
 
 	exit(EXIT_SUCCESS);
 }
@@ -140,7 +152,7 @@ void *networkThread(void *param) {
 	char *send_buffer = (char *) malloc(sizeof(char) * 256);
 	char *tokn_buffer = (char *) malloc(sizeof(char) * 256);
 	char *write_buffer = (char *) malloc(sizeof(char) * 512);
-	const int bufferSize = 128;
+	const int bufferSize = 256;
 
 	sendMessage("JOIN", sckt);
 
@@ -189,11 +201,16 @@ void *networkThread(void *param) {
 				readToken(tkn, message_cache);
 
 				numMessages = message_cache->number_of_messages;
+
+				sem_wait(&message_queue_lock);
+
 				while (!isEmpty(message_queue)) {
 					memset(write_buffer, 0, 512);
 					popQueue(write_buffer, message_queue);
 					writeMessage(write_buffer, numMessages++, tkn);
 				}
+
+				sem_post(&message_queue_lock);
 
 				sendMessage(send_buffer, sckt);
 
@@ -230,8 +247,15 @@ void writeUserMessage(const char *prompt) {
 		memset(line, 0, strlen(line));
 	}
 
+	// If no message was entered, don't save it.
+	if (!strcmp(message, "\0"))
+		return;
+
+	sem_wait(&message_queue_lock);
 	// Write message to token file
 	putQueue(message, message_queue);
+
+	sem_post(&message_queue_lock);
 }
 
 void printMenu() {
