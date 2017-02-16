@@ -131,6 +131,10 @@ void *networkThread(void *param) {
 
 	addrport_t ap;
 
+	int exiting = 0;
+
+	int numMessages;
+
 	int recvlen;
 	char *recv_buffer = (char *) malloc(sizeof(char) * 256);
 	char *send_buffer = (char *) malloc(sizeof(char) * 256);
@@ -140,7 +144,7 @@ void *networkThread(void *param) {
 
 	sendMessage("JOIN", sckt);
 
-	while (running) {
+	while (1) {
 
 		memset(send_buffer, 0, bufferSize);
 		memset(recv_buffer, 0, bufferSize);
@@ -150,39 +154,58 @@ void *networkThread(void *param) {
 		
 		if (recvlen > 0) {
 
+			// If received a join request, send a peer request to fit new peer into ring
 			if (!strcmp(recv_buffer, "JOIN")) {
 				makeAddrString(send_buffer, "PEER", &sckt->myaddr, &sckt->remaddr);
 				putQueue(send_buffer, peer_queue);
 			}
 			else {
 
+				// Copy received message into token buffer to be parsed
 				strcpy(tokn_buffer, recv_buffer);
 
+				// Parse message to check if a change to the ring is made
 				if (parseMessage(tokn_buffer, &ap)) {
+					// Check if destination address needs to be changed
 					if (checkDestination(sckt, &ap)) {
+						// Send default token message
 						strcpy(send_buffer, "GO");
 					}
 					else {
+						// Else forward ring change to next peer
 						strcpy(send_buffer, recv_buffer);
 					}
 				}
+				// If no other change is being made to ring, and a change is queued up, send it to next peer.
 				else if (!isEmpty(peer_queue)) {
 					popQueue(send_buffer, peer_queue);
 				}
+				// Else send default token message
 				else {
 					strcpy(send_buffer, "GO");
 				}
 
+				// Update cache 
 				readToken(tkn, message_cache);
 
+				numMessages = message_cache->number_of_messages;
 				while (!isEmpty(message_queue)) {
 					memset(write_buffer, 0, 512);
 					popQueue(write_buffer, message_queue);
-					writeMessage(write_buffer, message_cache->number_of_messages, tkn);
+					writeMessage(write_buffer, numMessages++, tkn);
 				}
 
 				sendMessage(send_buffer, sckt);
+
+				if (exiting)
+					break;
 			}
+		}
+
+		if (!running) {
+			makeAddrString(send_buffer, "PEER", &sckt->myaddr, &sckt->destaddr);
+			putQueue(send_buffer, peer_queue);
+			exiting = 1;
 		}
 	}
 

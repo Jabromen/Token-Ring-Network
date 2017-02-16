@@ -208,30 +208,6 @@ int addMessage(const char *message, messages_t *msg) {
 	return 0;
 }
 
-// TODO: Update this function when token ring network is implemented.
-//       This should queue a message to be written when token is obtained.
-// int writeUserMessage(const char *prompt, int num, token_t *tkn) {
-
-// 	char message[MAX_MESSAGE_SIZE] = "";
-// 	char line[BUFFER_SIZE] = "";
-
-// 	// Prompt user for message
-// 	printf("%s", prompt);
-
-// 	// Read user message from stdin
-// 	while (1) {
-// 		fgets(line, BUFFER_SIZE, stdin);
-// 		if (!strcmp(line, "\n")) {
-// 			break;
-// 		}
-// 		strcat(message, line);
-// 		memset(line, 0, strlen(line));
-// 	}
-
-// 	// Write message to token file
-// 	return writeMessage(message, num, tkn);
-// }
-
 int writeMessage(const char *message, int num, token_t *tkn) {
 
 	// Open token file to append message

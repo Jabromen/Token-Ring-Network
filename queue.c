@@ -21,12 +21,12 @@ node_t *newNode(const char *message) {
 	if (!node)
 		return NULL;
 
-	node->message = (char *) malloc(sizeof(strlen(message) + 1));
+	// node->message = (char *) malloc(sizeof(strlen(message) + 2));
 
-	if (!node->message) {
-		free(node);
-		return NULL;
-	}
+	// if (!node->message) {
+	// 	free(node);
+	// 	return NULL;
+	// }
 
 	strcpy(node->message, message);
 	node->next = NULL;
@@ -96,6 +96,6 @@ void freeQueue(queue_t *q) {
 
 void freeNode(node_t *node) {
 
-	free(node->message);
+	// free(node->message);
 	free(node);
 }

@@ -1,6 +1,0 @@
-<message n=0>
-Hello, guys.
-</message>
-<message n=1>
-How's it going?
-</message>

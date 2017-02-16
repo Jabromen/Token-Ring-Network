@@ -15,7 +15,7 @@ typedef struct queue_t {
 
 typedef struct node_t {
 
-	char *message;
+	char message[512];
 	struct node_t *next;
 
 } node_t;
