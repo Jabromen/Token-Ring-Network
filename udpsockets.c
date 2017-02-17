@@ -1,5 +1,18 @@
 #include "udpsockets.h"
 
+
+/*
+	The purpose of this function is to create and initialize 
+	the client UDP socket
+	
+	Takes hostname string, unsigned short destination port, and 
+	unsigned short own port
+	
+	Calls initUdpSocket
+	
+	Returns udpsocket pointer
+	
+*/
 udpsocket_t *initUdpSocketClient(const char *hostname, u_short dest_port, u_short my_port) {
 
 	// Allocate memory for udp sockets struct
@@ -26,6 +39,14 @@ udpsocket_t *initUdpSocketClient(const char *hostname, u_short dest_port, u_shor
 	return sckt;
 }
 
+/*
+	The purpose of this function is to create and initialize a UDP socket
+	
+	unsigned short own port
+	
+	Returns UDP socket pointer
+	
+*/
 udpsocket_t *initUdpSocket(u_short my_port) {
 
 	// Allocate memory for udp sockets struct
@@ -67,6 +88,15 @@ udpsocket_t *initUdpSocket(u_short my_port) {
 	return sckt;
 }
 
+
+/*
+	The purpose of this function is to set up the passed UDP socket
+	with destination address and port
+	
+	Takes unsigned long destination address, unsigned short destination port
+	and UDP socket pointer
+	
+*/
 void setUdpDestination(u_long dest_addr, u_short dest_port, udpsocket_t *sckt) {
 
 	// Set destination socket's type, address, and port
@@ -76,6 +106,16 @@ void setUdpDestination(u_long dest_addr, u_short dest_port, udpsocket_t *sckt) {
 	sckt->destaddr.sin_port        = dest_port;
 }
 
+
+/*
+	The purpose of this function is to create an address string to be
+	sent.
+	
+	Takes buffer string, prefix string, own address socket in pointer,
+	destination,	address socket in pointer
+	
+	
+*/
 void makeAddrString(char *buffer, const char *prefix, struct sockaddr_in *myaddr, struct sockaddr_in *destaddr) {
 
 	sprintf(buffer, "%s %u %u %u %u", prefix,
@@ -85,6 +125,15 @@ void makeAddrString(char *buffer, const char *prefix, struct sockaddr_in *myaddr
 	                                  destaddr->sin_port);
 }
 
+
+/*
+	The purpose of this function is to parse the incoming token
+	
+	Takes token pointer and address struct pointer
+	
+	Returns int boolean to error check
+	
+*/
 int parseMessage(tokn_message_t *tm, addrport_t *ap) {
 
 	if (tm->argc == 5 && (!strcmp(tm->argv[0], "PEER") || !strcmp(tm->argv[0], "INIT-PEER") || !strcmp(tm->argv[0], "INIT-GO"))) {
@@ -99,6 +148,18 @@ int parseMessage(tokn_message_t *tm, addrport_t *ap) {
 	return 0;
 }
 
+
+/*
+	The purpose of this function is to verify that the destination port is
+	valid, then if so set up the socket with the correct address
+	
+	Takes socket pointer and address struct pointer
+	
+	Calls setUdpDestination
+	
+	Returns int boolean to error check
+	
+*/
 int checkDestination(udpsocket_t *sckt, addrport_t *ap) {
 
 	if (sckt->destaddr.sin_addr.s_addr != ap->oldaddr)
@@ -112,6 +173,15 @@ int checkDestination(udpsocket_t *sckt, addrport_t *ap) {
 	return 1;
 }
 
+
+/*
+	The purpose of this function is to send a message over UDP
+	
+	Takes message string and socket pointer
+	
+	Returns int boolean to error check
+	
+*/
 int sendMessage(const char *message, udpsocket_t *sckt) {
 
 	if (sendto(sckt->fd, message, strlen(message), 0, (struct sockaddr *) &sckt->destaddr, sckt->addrlen) < 0) {
@@ -122,11 +192,28 @@ int sendMessage(const char *message, udpsocket_t *sckt) {
 	return 0;
 }
 
+
+/*
+	The purpose of this function is to receive a UDP message
+	
+	Takes buffer string, buffer size, and socket pointer
+	
+	Returns int boolean to error check
+	
+*/
 int receiveMessage(char *buffer, const int buffSize, udpsocket_t *sckt) {
 
 	return recvfrom(sckt->fd, buffer, buffSize, 0, (struct sockaddr *) &sckt->remaddr, &sckt->addrlen);
 }
 
+
+/*
+	The purpose of this function is to close and free the passed socket's 
+	memory
+	
+	Takes socket pointer
+	
+*/
 void closeSocket(udpsocket_t *sckt) {
 
 	close(sckt->fd);
@@ -157,6 +244,14 @@ tokn_message_t *initToknMessageStruct() {
 	return tm;
 }
 
+
+/*
+	The purpose of this function is to zero the token message
+	
+	Takes token struct pointer
+	
+	
+*/
 void clearToknMessage(tokn_message_t *tm) {
 
 	memset(tm->tokn_buffer, 0, NETWORK_BUFF_SIZE);
@@ -168,6 +263,15 @@ void clearToknMessage(tokn_message_t *tm) {
 	}
 }
 
+
+/*
+	The purpose of this function is to tokenize the received token
+	
+	Takes message string and token struct pointer
+	
+	Returns int boolean to error check
+	
+*/
 int tokenizeMessage(const char *message, tokn_message_t *tm) {
 
 	strcpy(tm->tokn_buffer, message);
@@ -188,6 +292,16 @@ int tokenizeMessage(const char *message, tokn_message_t *tm) {
 	return 0;
 }
 
+
+/*
+	The purpose of this function is compare own address with received address
+	for initial creation of token
+	
+	Takes socket pointer and address struct pointer
+	
+	Returns int indicating which message is lower, or 2 if error
+	
+*/
 int compareAddresses(udpsocket_t *sckt, addrport_t *ap) {
 
 	// Return 1 if my address is lower

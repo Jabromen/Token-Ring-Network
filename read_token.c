@@ -1,5 +1,14 @@
 #include "read_token.h"
 
+
+/*
+	The purpose of this function is to initialize the token structure
+	
+	Takes pointer to the filename of the bulletin board
+	
+	Returns token pointer
+	
+*/
 token_t *initTokenStruct(const char *filename) {
 
 	// Allocate memory for token struct
@@ -25,6 +34,15 @@ token_t *initTokenStruct(const char *filename) {
 	return newToken;
 }
 
+
+/*
+	The purpose of this function is to initialize the messages structure
+	
+	Takes integer length
+	
+	Returns message pointer
+	
+*/
 messages_t *initMessagesStruct(int length) {
 
 	// If length is invalid, default to a length of 1
@@ -55,6 +73,16 @@ messages_t *initMessagesStruct(int length) {
 	return newMessages;
 }
 
+
+/*
+	The purpose of this function is extract the message out of the
+	message struct
+	
+	Takes index and message struct pointer
+	
+	Returns message string
+	
+*/
 char *getMessage(int index, messages_t *msg) {
 
 	// If index is outside of the range, return a NULL string
@@ -65,6 +93,14 @@ char *getMessage(int index, messages_t *msg) {
 	return msg->messages[index];
 }
 
+
+/*
+	The purpose of this function is obtain and display the current valid 
+	message	index
+	
+	Takes message struct pointer
+	
+*/
 void printValidIndices(messages_t *msg) {
 
 	int num_messages = msg->number_of_messages;
@@ -77,6 +113,14 @@ void printValidIndices(messages_t *msg) {
 	}
 }
 
+
+/*
+	The purpose of this function is retrieve a message and display it for the
+	user
+	
+	Takes prompt to display and message struct pointer
+	
+*/
 void getUserMessage(const char *prompt, messages_t *msg) {
 
 	int index;
@@ -108,6 +152,18 @@ void getUserMessage(const char *prompt, messages_t *msg) {
 	}
 }
 
+
+/*
+	The purpose of this function is update the messages cache on receipt
+	of the token.
+	
+	Takes token struct pointer and message struct pointer
+	
+	Calls addMessage
+	
+	Returns int boolean to error check
+	
+*/
 int readToken(token_t *tkn, messages_t *msg) {
 
 	// Open token file
@@ -163,6 +219,15 @@ int readToken(token_t *tkn, messages_t *msg) {
 	return 0;
 }
 
+
+/*
+	The purpose of this function is to grow the messages cache
+	
+	Takes message struct pointer
+	
+	Returns int boolean to error check
+	
+*/
 int increaseNumMessages(messages_t *msg) {
 
 	// Double the message array length
@@ -179,6 +244,17 @@ int increaseNumMessages(messages_t *msg) {
 	return 0;
 }
 
+
+/*
+	The purpose of this function is to add a message to the message struct
+	
+	Takes message pointer and message struct pointer
+	
+	Calls increaseNumMessages
+	
+	Returns int boolean to error check
+	
+*/
 int addMessage(const char *message, messages_t *msg) {
 
 	// Index where the new message will be cached at.
@@ -208,6 +284,16 @@ int addMessage(const char *message, messages_t *msg) {
 	return 0;
 }
 
+
+/*
+	The purpose of this function is to write a message to the bulletin
+	board file
+	
+	Takes message pointer, message number int, and token struct pointer
+	
+	Returns int boolean to error check
+	
+*/
 int writeMessage(const char *message, int num, token_t *tkn) {
 
 	// Open token file to append message
@@ -227,6 +313,14 @@ int writeMessage(const char *message, int num, token_t *tkn) {
 	return 0;
 }
 
+
+/*
+	The purpose of this function is to free memory used by the token struct
+	to avoid memory leaks
+	
+	Takes token struct pointer
+	
+*/
 void freeToken(token_t *tkn) {
 
 	// Free memory allocated to filename string
@@ -235,6 +329,14 @@ void freeToken(token_t *tkn) {
 	free(tkn);
 }
 
+
+/*
+	The purpose of this function is to free memory used by the messages struct
+	to avoid memory leaks
+	
+	Takes message struct pointer
+	
+*/
 void freeMessages(messages_t *msg) {
 
 	// Free memory allocated to each message string

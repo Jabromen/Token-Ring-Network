@@ -1,5 +1,12 @@
 #include "queue.h"
 
+
+/*
+	The purpose of this function is to initialize the queue structure
+	
+	Returns queue struct pointer
+	
+*/
 queue_t *initQueue() {
 
 	queue_t *q = (queue_t *) malloc(sizeof(queue_t));
@@ -14,6 +21,15 @@ queue_t *initQueue() {
 	return q;
 }
 
+
+/*
+	The purpose of this function is to create a new node
+	
+	Takes message pointer
+	
+	Returns queue node pointer
+	
+*/
 node_t *newNode(const char *message) {
 
 	node_t *node = (node_t *) malloc(sizeof(node_t));
@@ -34,6 +50,15 @@ node_t *newNode(const char *message) {
 	return node;
 }
 
+
+/*
+	The purpose of this function is check if the queue is empty
+	
+	Takes queue pointer 
+	
+	Returns int boolean
+	
+*/
 int isEmpty(queue_t *q) {
 
 	if (q->size > 0)
@@ -42,6 +67,18 @@ int isEmpty(queue_t *q) {
 	return 1;
 }
 
+
+/*
+	The purpose of this function is to add a new node to the queue containing
+	the passed message
+	
+	Takes message pointer and queue pointer
+	
+	calls newNode
+	
+	Returns int boolean to error check
+	
+*/
 int putQueue(const char *message, queue_t *q) {
 
 	node_t *node = newNode(message);
@@ -61,6 +98,15 @@ int putQueue(const char *message, queue_t *q) {
 	return 0;
 }
 
+/*
+	The purpose of this function is to remove a node from the queue
+	
+	Takes buffer pointer and queue pointer
+	
+	calls removeNode
+	
+*/
+
 void popQueue(char *buffer, queue_t *q) {
 
 	if (isEmpty(q)) {
@@ -73,6 +119,16 @@ void popQueue(char *buffer, queue_t *q) {
 	removeNode(q);
 }
 
+
+/*
+	The purpose of this function is to remove a node from the queue
+	
+	Takes queue pointer
+	
+	Calls freeNode
+
+	
+*/
 void removeNode(queue_t *q) {
 
 	node_t *rem_node = q->start;
@@ -85,6 +141,15 @@ void removeNode(queue_t *q) {
 	freeNode(rem_node);
 }
 
+
+/*
+	The purpose of this function is to free queue memory to avoid memory leaks
+	
+	Takes queue pointer
+	
+	calls isEmpty, removeNode
+	
+*/
 void freeQueue(queue_t *q) {
 
 	while (!isEmpty(q)) {
@@ -94,6 +159,13 @@ void freeQueue(queue_t *q) {
 	free(q);
 }
 
+
+/*
+	The purpose of this function is to free the memory of one node
+	
+	Takes node pointer
+	
+*/
 void freeNode(node_t *node) {
 
 	// free(node->message);

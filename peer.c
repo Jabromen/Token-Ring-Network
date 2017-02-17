@@ -20,6 +20,11 @@
 #include <semaphore.h>
 #endif
 
+
+/*
+	The purpose of this struct is to store the command line arguments
+	to pass to other functions
+*/
 struct args_t {
 
 	u_short my_port;
@@ -97,6 +102,16 @@ int main(int argc, char **argv) {
 	exit(EXIT_SUCCESS);
 }
 
+/*
+	The purpose of this function is to run a thread to display
+	and receive input from the user on the menu, then call the appropriate
+	function to run that menu option.
+	
+	Takes a null pointer to an args struct to pass in the command line
+	arguments
+	
+	Calls writeUserMessage, getUserMessage, printValidIndices
+*/
 void *uiThread(void *param) {
 
 	int option;
@@ -134,6 +149,20 @@ void *uiThread(void *param) {
 		}
 	}
 }
+
+/*
+	The purpose of this function is to run a thread to handle initial
+	setup of the ring, or add to the ring then initialize and pass the token
+	around the ring
+	
+	Takes a null pointer to an args struct to pass in the command line
+	arguments
+	
+	Calls initUdpSocketClient, sendMessage, initToknMessageStruct,
+	clearToknMessage, receiveMessage, tokenizeMessage, parseMessage,
+	checkDestination, makeAddrString, compareAddresses, putQueue, popQueue,
+	isEmpty
+*/
 
 void *networkThread(void *param) {
 
@@ -261,6 +290,16 @@ void *networkThread(void *param) {
 	pthread_exit(NULL);
 }
 
+
+/*
+	The purpose of this function is to run display a prompt to the user,
+	then receive the message and place it into the queue.
+	
+	Takes a string passed in as the prompt to display
+	
+	Calls putQueue
+*/
+
 void writeUserMessage(const char *prompt) {
 
 	char message[MAX_MESSAGE_SIZE] = "";
@@ -289,6 +328,11 @@ void writeUserMessage(const char *prompt) {
 
 	sem_post(&message_queue_lock);
 }
+
+
+/*
+	The purpose of this function is to display the menu to the user
+*/
 
 void printMenu() {
     printf("    Please select an action by entering the number by the action\n\n"
