@@ -1,6 +1,6 @@
 #include "udpsockets.h"
 #include "queue.h"
-#include "read_token.h"
+#include "read_file.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,17 +59,24 @@ int main(int argc, char **argv) {
 
 	int err;
 
+	// Set offset and new flag depending on if "-new" option was entered.
 	int arg_offset = !strcmp(argv[1], "-new") ? 1 : 0;
 	new = arg_offset;
 
+	// Struct used to pass command line arguments into network thread
 	struct args_t args;
 	args.my_port   = (u_short) atoi(argv[1 + arg_offset]);
 	args.hostname  = argv[2 + arg_offset];
 	args.dest_port = (u_short) atoi(argv[3 + arg_offset]);
 	args.filename  = argv[4 + arg_offset];
 
+	// Initialize data structures
+
+	// Holds all cached messages read from bulletin board file
 	message_cache = initMessagesStruct(1);
+	// Queue for passing messages from UI thread to network thread
 	message_queue = initQueue();
+	// Queue for handling ring network changes
 	peer_queue = initQueue();
 
 	pthread_t ui_thread;
@@ -92,9 +99,12 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
+	// Wait until threads exit
 	pthread_join(ui_thread, NULL);
 	pthread_join(network_thread, NULL);
 
+	// Free allocated memory
+	freeMessages(message_cache);
 	freeQueue(message_queue);
 	freeQueue(peer_queue);
 	sem_destroy(&message_queue_lock);
@@ -122,12 +132,13 @@ void *uiThread(void *param) {
 	while(1) {
 		printf("\nSelect an option: ");
 		scanf("%d", &option);
+		// Prevents scanf input from bleeding over into its next call
 		while ((ch = getchar()) != EOF && ch != '\n') {;}
 		printf("\n");
 
 		switch(option) {
 			case 1:
-				writeUserMessage("Enter a message: ");
+				writeUserMessage("Enter a message:\n");
 				break;
 
 			case 2:
@@ -166,35 +177,50 @@ void *uiThread(void *param) {
 
 void *networkThread(void *param) {
 
+	// Get command line arguments
 	struct args_t *args = (struct args_t *) param;
 
-	token_t *tkn = initTokenStruct(args->filename);
+	// Initialize struct used to handle file IO
+	file_t *file = initFileStruct(args->filename);
 
+	// Create UDP socket
 	udpsocket_t *sckt = initUdpSocketClient(args->hostname, args->dest_port, args->my_port);
 
+	// Struct used to hold address and port values for comparison
 	addrport_t ap;
 
+	// Flag indicating if exiting
 	int exiting = 0;
 
+	// Current number of messages in cache
 	int numMessages;
 
+	// Used to hold address/port comparison result
 	int compAddr;
 
+	// Number of bytes received
 	int recvlen;
+
+	// Buffers used to send and receive network messages
 	char *recv_buffer = (char *) malloc(sizeof(char) * NETWORK_BUFF_SIZE);
 	char *send_buffer = (char *) malloc(sizeof(char) * NETWORK_BUFF_SIZE);
-	char *write_buffer = (char *) malloc(sizeof(char) * 512);
 
+	// Buffer used to write to bulletin board file
+	char *write_buffer = (char *) malloc(sizeof(char) * MAX_MESSAGE_SIZE);
+
+	// Struct that holds tokenized received network message
 	tokn_message_t *tokn_message = initToknMessageStruct();
 
+	// Send initial join request to server (if "-new" option was entered) or peer
 	sendMessage("JOIN", sckt);
 
 	while (1) {
-
+		// Clear buffers
 		memset(send_buffer, 0, NETWORK_BUFF_SIZE);
 		memset(recv_buffer, 0, NETWORK_BUFF_SIZE);
 		clearToknMessage(tokn_message);
 
+		// Receive network message
 		recvlen = receiveMessage(recv_buffer, NETWORK_BUFF_SIZE, sckt);
 		
 		if (recvlen > 0) {
@@ -205,36 +231,46 @@ void *networkThread(void *param) {
 				continue;
 
 			// Case for initial peer assignment
-			if (!strcmp(tokn_message->argv[0], "INIT-PEER")) {
-				if (parseMessage(tokn_message, &ap) && new) {
+			if (!strcmp(tokn_message->argv[0], "INIT-PEER") && new) {
+				// Parse message and store addresses and ports into ap struct.
+				if (parseMessage(tokn_message, &ap)) {
+					// Apply address and port changes.
 					checkDestination(sckt, &ap);
+					// Generate message used for deciding who creates the first token.
 					makeAddrString(send_buffer, "INIT-GO", &sckt->myaddr, &sckt->remaddr);
 					sendMessage(send_buffer, sckt);
 				}
 			}
 			// Case for initial token creation
 			else if (!strcmp(tokn_message->argv[0], "INIT-GO") && new) {
+				// Parse message and store address and port into ap struct
 				if (parseMessage(tokn_message, &ap)) {
-
+					// Result of comparing own address/port with received address/port
 					compAddr = compareAddresses(sckt, &ap);
 
-					if (compAddr == 1)
+					// If own address/port is lower, send own address/port
+					if (compAddr < 0)
 						makeAddrString(send_buffer, "INIT-GO", &sckt->myaddr, &sckt->remaddr);
-					else if (compAddr == 0)
+					// If own address/port is higher, send received address/port
+					else if (compAddr > 0)
 						strcpy(send_buffer, recv_buffer);
+					// If received own address/port, create and send token.
 					else {
 						strcpy(send_buffer, "GO");
+						// Set new flag to 0
 						new = 0;
 					}
 
 					sendMessage(send_buffer, sckt);
 				}
 			}
-			// If received a join request, send a peer request to fit new peer into ring
+			// Case for receiving a join request
 			else if (!strcmp(tokn_message->argv[0], "JOIN")) {
+				// Put address/port of joining peer into queue to be sent later.
 				makeAddrString(send_buffer, "PEER", &sckt->myaddr, &sckt->remaddr);
 				putQueue(send_buffer, peer_queue);
 			}
+			// Case for receiving token
 			else if (!strcmp(tokn_message->argv[0], "GO") || !strcmp(tokn_message->argv[0], "PEER")) {
 				new = 0;
 				// Parse message to check if a change to the ring is made
@@ -259,27 +295,30 @@ void *networkThread(void *param) {
 				}
 
 				// Update cache 
-				readToken(tkn, message_cache);
+				readFile(file, message_cache);
 
 				numMessages = message_cache->number_of_messages;
 
 				sem_wait(&message_queue_lock);
 
+				// Write all queued messages to bulletin board file
 				while (!isEmpty(message_queue)) {
-					memset(write_buffer, 0, 512);
+					memset(write_buffer, 0, MAX_MESSAGE_SIZE);
 					popQueue(write_buffer, message_queue);
-					writeMessage(write_buffer, numMessages++, tkn);
+					writeMessage(write_buffer, numMessages++, file);
 				}
 
 				sem_post(&message_queue_lock);
 
 				sendMessage(send_buffer, sckt);
 
+				// Stop listening for new messages if exiting
 				if (exiting)
 					break;
 			}
 		}
 
+		// If signaled to exit from UI thread, enqueue peer change and set exiting flag
 		if (!running) {
 			makeAddrString(send_buffer, "PEER", &sckt->myaddr, &sckt->destaddr);
 			putQueue(send_buffer, peer_queue);
@@ -287,6 +326,19 @@ void *networkThread(void *param) {
 		}
 	}
 
+	// Free allocated memory
+	freeFile(file);
+
+	free(send_buffer);
+	free(recv_buffer);
+	free(write_buffer);
+
+	freeToknMessage(tokn_message);
+
+	// Close socket
+	closeSocket(sckt);
+
+	// Close thread
 	pthread_exit(NULL);
 }
 

@@ -54,10 +54,7 @@ int main (int argc, char** argv) {
     makeAddrString(buffer, "INIT-PEER", &sckt->myaddr, &hostAddrs[0]);
     sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[i], sckt->addrlen);
 
-    // Tell the first host that joined to create and send the token
-    // memset(buffer, 0, 128);
-    // strcpy(buffer, "GO");
-    // sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[0], sckt->addrlen);
+    closeSocket(sckt);
 
     exit(EXIT_SUCCESS);
 }

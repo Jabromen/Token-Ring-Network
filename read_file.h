@@ -1,24 +1,24 @@
-#ifndef _READ_TOKEN_H
-#define _READ_TOKEN_H
+#ifndef _READ_FILE_H
+#define _READ_FILE_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Size of buffer used to read lines from token file
+// Size of buffer used to read lines from bulletin board file
 #define BUFFER_SIZE 512
 // Maximum size that messages can be
 #define MAX_MESSAGE_SIZE 1024
-// Delimiters used to parse token file headers
+// Delimiters used to parse bulletin board file headers
 #define DELIM "<> n="
 
-// Struct used to manage operations on the token file
-typedef struct token_t {
-	// File name for token file
+// Struct used to manage operations on the bulletin board file
+typedef struct file_t {
+	// File name for bulletin board file
 	char *filename;
-	// Last read position in token file
+	// Last read position in bulletin board file
 	long position;
-} token_t;
+} file_t;
 
 // Struct used to hold cached messages
 typedef struct messages_t {
@@ -31,11 +31,11 @@ typedef struct messages_t {
 } messages_t;
 
 /*
- * Initializes and allocates memory for token struct.
- * @param: filename: File name of the token file.
- * @return: Pointer to token struct.
+ * Initializes and allocates memory for file struct.
+ * @param: filename: File name of the bulletin board file.
+ * @return: Pointer to file struct.
  */
-token_t *initTokenStruct(const char *filename);
+file_t *initFileStruct(const char *filename);
 
 /*
  * Initializes and allocates memory for messages struct.
@@ -66,12 +66,12 @@ void printValidIndices(messages_t *msg);
 void getUserMessage(const char *prompt, messages_t *msg);
 
 /*
- * Reads the token file and caches new messages.
- * @param: tkn: Token struct.
+ * Reads the bulletin board file and caches new messages.
+ * @param: file: File struct.
  * @param: msg: Messages struct.
  * @return: Returns 0 if success, 1 if failed.
  */
-int readToken(token_t *tkn, messages_t *msg);
+int readFile(file_t *file, messages_t *msg);
 
 /*
  * Increases the memory allocated to message string array.
@@ -90,28 +90,28 @@ int increaseNumMessages(messages_t *msg);
 int addMessage(const char *message, messages_t *msg);
 
 /*
- * Prompts the user for a message to append to token file.
+ * Prompts the user for a message to append to bulletin board file.
  * @param: prompt: Displayed prompt for user input.
  * @param: num: Number that will be written in message header.
- * @param: tkn: Token struct.
+ * @param: file: File struct.
  * @return: Returns 0 if success, 1 if failed.
  */
-//int writeUserMessage(const char *prompt, int num, token_t *tkn);
+//int writeUserMessage(const char *prompt, int num, file_t *file);
 
 /*
- * Appends a message string to token file.
- * @param: message: Message string to be written to token file.
+ * Appends a message string to bulletin board file.
+ * @param: message: Message string to be written to bulletin board file.
  * @param: num: Number that will be written in message header.
- * @param: tkn: Token struct.
+ * @param: file: File struct.
  * @return: Returns 0 if success, 1 if failed.
  */
-int writeMessage(const char *message, int num, token_t *tkn);
+int writeMessage(const char *message, int num, file_t *file);
 
 /*
- * Frees all memory used by token struct.
- * @param: tkn: Token struct to be freed.
+ * Frees all memory used by file struct.
+ * @param: file: File struct to be freed.
  */
-void freeToken(token_t *tkn);
+void freeFile(file_t *file);
 
 /*
  * Frees all memory used by messages struct.

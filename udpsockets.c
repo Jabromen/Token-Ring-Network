@@ -299,28 +299,34 @@ int tokenizeMessage(const char *message, tokn_message_t *tm) {
 	
 	Takes socket pointer and address struct pointer
 	
-	Returns int indicating which message is lower, or 2 if error
+	Returns int indicating which message is lower, or 0 if equal
 	
 */
 int compareAddresses(udpsocket_t *sckt, addrport_t *ap) {
 
-	// Return 1 if my address is lower
+	// Return -1 if my address is lower
 	if (sckt->myaddr.sin_addr.s_addr < ap->oldaddr)
-		return 1;
+		return -1;
 
-	// Return 0 if my address is higher
+	// Return 1 if my address is higher
 	else if (sckt->myaddr.sin_addr.s_addr > ap->oldaddr)
-		return 0;
-
-	// Return 1 if same address and my port is lower
-	else if (sckt->myaddr.sin_port < ap->oldport)
 		return 1;
 
-	// Return 0 if same address and my port is higher
-	else if (sckt->myaddr.sin_port > ap->oldport)
-		return 0;
+	// Return -1 if same address and my port is lower
+	else if (sckt->myaddr.sin_port < ap->oldport)
+		return -1;
 
-	// Return 2 if received my own address and port
+	// Return 1 if same address and my port is higher
+	else if (sckt->myaddr.sin_port > ap->oldport)
+		return 1;
+
+	// Return 0 if received my own address and port
 	else
-		return 2;
+		return 0;
+}
+
+void freeToknMessage(tokn_message_t *tm) {
+
+	free(tm->tokn_buffer);
+	free(tm);
 }

@@ -1,37 +1,37 @@
-#include "read_token.h"
+#include "read_file.h"
 
 
 /*
-	The purpose of this function is to initialize the token structure
+	The purpose of this function is to initialize the file_t structure
 	
 	Takes pointer to the filename of the bulletin board
 	
-	Returns token pointer
+	Returns file_t pointer
 	
 */
-token_t *initTokenStruct(const char *filename) {
+file_t *initFileStruct(const char *filename) {
 
-	// Allocate memory for token struct
-	token_t *newToken = (token_t*) malloc(sizeof(token_t));
+	// Allocate memory for file struct
+	file_t *newFile = (file_t*) malloc(sizeof(file_t));
 
-	if (newToken == NULL) {
+	if (!newFile) {
 		return NULL;
 	}
 
 	// Allocate memory for filename string
 	int filename_length = strlen(filename) + 1;
-	newToken->filename = (char*) malloc(filename_length * sizeof(char));
+	newFile->filename = (char*) malloc(filename_length * sizeof(char));
 
-	if (newToken->filename == NULL) {
-		free(newToken);
+	if (!newFile->filename) {
+		free(newFile);
 		return NULL;
 	}
 
 	// Set filename string and initial file position
-	strcpy(newToken->filename, filename);
-	newToken->position = 0;
+	strcpy(newFile->filename, filename);
+	newFile->position = 0;
 
-	return newToken;
+	return newFile;
 }
 
 
@@ -128,6 +128,7 @@ void getUserMessage(const char *prompt, messages_t *msg) {
 	char message[MAX_MESSAGE_SIZE] = "";
 
 	if (msg->number_of_messages <= 0) {
+		printf("No messages.\n");
 		return;
 	}
 
@@ -157,23 +158,23 @@ void getUserMessage(const char *prompt, messages_t *msg) {
 	The purpose of this function is update the messages cache on receipt
 	of the token.
 	
-	Takes token struct pointer and message struct pointer
+	Takes file struct pointer and message struct pointer
 	
 	Calls addMessage
 	
 	Returns int boolean to error check
 	
 */
-int readToken(token_t *tkn, messages_t *msg) {
+int readFile(file_t *file, messages_t *msg) {
 
-	// Open token file
-	FILE *fp = fopen(tkn->filename, "r");
+	// Open bulletin board file
+	FILE *fp = fopen(file->filename, "r");
 
 	if (fp == NULL) {
 		return 1;
 	}
 
-	// Buffer used to read lines from token file
+	// Buffer used to read lines from file
 	char line[BUFFER_SIZE];
 	// Buffer used to store message before caching
 	char message[MAX_MESSAGE_SIZE] = "";
@@ -182,7 +183,7 @@ int readToken(token_t *tkn, messages_t *msg) {
 
 
 	// Seek to last read position in file
-	fseek(fp, tkn->position, SEEK_SET);
+	fseek(fp, file->position, SEEK_SET);
 
 	// Read everything that has been appended to file since last read
 	while (fgets(line, BUFFER_SIZE, fp) != NULL) {
@@ -212,7 +213,7 @@ int readToken(token_t *tkn, messages_t *msg) {
 		}
 	}
 	// Update the last read position in file
-	tkn->position = ftell(fp);
+	file->position = ftell(fp);
 
 	fclose(fp);
 
@@ -289,21 +290,21 @@ int addMessage(const char *message, messages_t *msg) {
 	The purpose of this function is to write a message to the bulletin
 	board file
 	
-	Takes message pointer, message number int, and token struct pointer
+	Takes message pointer, message number int, and file struct pointer
 	
 	Returns int boolean to error check
 	
 */
-int writeMessage(const char *message, int num, token_t *tkn) {
+int writeMessage(const char *message, int num, file_t *file) {
 
-	// Open token file to append message
-	FILE *fp = fopen(tkn->filename, "a");
+	// Open bulletin board file to append message
+	FILE *fp = fopen(file->filename, "a");
 
 	if (fp == NULL) {
 		return 1;
 	}
 
-	// Write message to token file with header and footer included
+	// Write message to bulletin board file with header and footer included
 	fprintf(fp, "<message n=%d>\n", num);
 	fputs(message, fp);
 	fputs("</message>\n", fp);
@@ -315,18 +316,18 @@ int writeMessage(const char *message, int num, token_t *tkn) {
 
 
 /*
-	The purpose of this function is to free memory used by the token struct
+	The purpose of this function is to free memory used by the file struct
 	to avoid memory leaks
 	
-	Takes token struct pointer
+	Takes file struct pointer
 	
 */
-void freeToken(token_t *tkn) {
+void freeFile(file_t *file) {
 
 	// Free memory allocated to filename string
-	free(tkn->filename);
+	free(file->filename);
 	// Free struct
-	free(tkn);
+	free(file);
 }
 
 

@@ -87,4 +87,6 @@ int tokenizeMessage(const char *message, tokn_message_t *tm);
 
 int compareAddresses(udpsocket_t *sckt, addrport_t *ap);
 
+void freeToknMessage(tokn_message_t *tm);
+
 #endif
