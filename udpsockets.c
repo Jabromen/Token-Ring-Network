@@ -85,22 +85,13 @@ void makeAddrString(char *buffer, const char *prefix, struct sockaddr_in *myaddr
 	                                  destaddr->sin_port);
 }
 
-int parseMessage(char *message, addrport_t *ap) {
+int parseMessage(tokn_message_t *tm, addrport_t *ap) {
 
-	char *token[6];
-
-	int i = 0;
-	token[i] = strtok(message, " ");
-
-	while (token[i] != NULL) {
-		token[++i] = strtok(NULL, " ");
-	}
-
-	if (i == 5 && !strcmp(token[0], "PEER")) {
-		ap->oldaddr = (unsigned int)  atoi(token[1]);
-		ap->oldport = (u_short) atoi(token[2]);
-		ap->newaddr = (unsigned int)  atoi(token[3]);
-		ap->newport = (u_short) atoi(token[4]);
+	if (tm->argc == 5 && (!strcmp(tm->argv[0], "PEER") || !strcmp(tm->argv[0], "INIT-PEER") || !strcmp(tm->argv[0], "INIT-GO"))) {
+		ap->oldaddr = (unsigned int)  atoi(tm->argv[1]);
+		ap->oldport = (u_short) atoi(tm->argv[2]);
+		ap->newaddr = (unsigned int)  atoi(tm->argv[3]);
+		ap->newport = (u_short) atoi(tm->argv[4]);
 
 		return 1;
 	}
@@ -140,4 +131,82 @@ void closeSocket(udpsocket_t *sckt) {
 
 	close(sckt->fd);
 	free(sckt);
+}
+
+tokn_message_t *initToknMessageStruct() {
+
+	tokn_message_t *tm = (tokn_message_t *) malloc(sizeof(tokn_message_t));
+
+	if (!tm)
+		return NULL;
+
+	tm->tokn_buffer = (char *) malloc(sizeof(char) * NETWORK_BUFF_SIZE);
+
+	if (!tm->tokn_buffer) {
+		free(tm);
+		return NULL;
+	}
+
+	tm->argc = 0;
+
+	int i;
+	for (i = 0; i < 6; i++) {
+		tm->argv[i] = NULL;
+	}
+
+	return tm;
+}
+
+void clearToknMessage(tokn_message_t *tm) {
+
+	memset(tm->tokn_buffer, 0, NETWORK_BUFF_SIZE);
+	tm->argc = 0;
+
+	int i;
+	for (i = 0; i < 6; i++) {
+		tm->argv[i] = NULL;
+	}
+}
+
+int tokenizeMessage(const char *message, tokn_message_t *tm) {
+
+	strcpy(tm->tokn_buffer, message);
+
+	int i = 0;
+	tm->argv[i] = strtok(tm->tokn_buffer, " ");
+
+	while (tm->argv[i] != NULL) {
+
+		if (i >= 6)
+			return 1;
+
+		tm->argv[++i] = strtok(NULL, " ");
+	}
+
+	tm->argc = i;
+
+	return 0;
+}
+
+int compareAddresses(udpsocket_t *sckt, addrport_t *ap) {
+
+	// Return 1 if my address is lower
+	if (sckt->myaddr.sin_addr.s_addr < ap->oldaddr)
+		return 1;
+
+	// Return 0 if my address is higher
+	else if (sckt->myaddr.sin_addr.s_addr > ap->oldaddr)
+		return 0;
+
+	// Return 1 if same address and my port is lower
+	else if (sckt->myaddr.sin_port < ap->oldport)
+		return 1;
+
+	// Return 0 if same address and my port is higher
+	else if (sckt->myaddr.sin_port > ap->oldport)
+		return 0;
+
+	// Return 2 if received my own address and port
+	else
+		return 2;
 }

@@ -10,6 +10,8 @@
 #include <netdb.h>
 #include <unistd.h>
 
+#define NETWORK_BUFF_SIZE 256
+
 typedef struct udpsocket_t {
 
 	int fd;
@@ -30,6 +32,15 @@ typedef struct addrport_t {
 	u_short newport;
 
 } addrport_t;
+
+typedef struct tokn_message_t {
+
+	char *tokn_buffer;
+
+	int argc;
+	char *argv[6];
+
+} tokn_message_t;
 
 /*
  * Creates and initializes a client udpsocket_t with a destination address and port set.
@@ -52,7 +63,7 @@ void setUdpDestination(u_long dest_addr, u_short dest_port, udpsocket_t *sckt);
  */
 void makeAddrString(char *buffer, const char *prefix, struct sockaddr_in *myaddr, struct sockaddr_in *destaddr);
 
-int parseMessage(char *message, addrport_t *ap);
+int parseMessage(tokn_message_t *tm, addrport_t *ap);
 
 int checkDestination(udpsocket_t *sckt, addrport_t *ap);
 
@@ -67,5 +78,13 @@ int sendMessage(const char *message, udpsocket_t *sckt);
 int receiveMessage(char *buffer, const int buffSize, udpsocket_t *sckt);
 
 void closeSocket(udpsocket_t *sckt);
+
+tokn_message_t *initToknMessageStruct();
+
+void clearToknMessage(tokn_message_t *tm);
+
+int tokenizeMessage(const char *message, tokn_message_t *tm);
+
+int compareAddresses(udpsocket_t *sckt, addrport_t *ap);
 
 #endif

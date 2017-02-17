@@ -42,6 +42,7 @@ queue_t *peer_queue;
 sem_t message_queue_lock;
 
 int running;
+int new;
 
 int main(int argc, char **argv) {
 
@@ -54,6 +55,7 @@ int main(int argc, char **argv) {
 	int err;
 
 	int arg_offset = !strcmp(argv[1], "-new") ? 1 : 0;
+	new = arg_offset;
 
 	struct args_t args;
 	args.my_port   = (u_short) atoi(argv[1 + arg_offset]);
@@ -147,37 +149,67 @@ void *networkThread(void *param) {
 
 	int numMessages;
 
+	int compAddr;
+
 	int recvlen;
-	char *recv_buffer = (char *) malloc(sizeof(char) * 256);
-	char *send_buffer = (char *) malloc(sizeof(char) * 256);
-	char *tokn_buffer = (char *) malloc(sizeof(char) * 256);
+	char *recv_buffer = (char *) malloc(sizeof(char) * NETWORK_BUFF_SIZE);
+	char *send_buffer = (char *) malloc(sizeof(char) * NETWORK_BUFF_SIZE);
 	char *write_buffer = (char *) malloc(sizeof(char) * 512);
-	const int bufferSize = 256;
+
+	tokn_message_t *tokn_message = initToknMessageStruct();
 
 	sendMessage("JOIN", sckt);
 
 	while (1) {
 
-		memset(send_buffer, 0, bufferSize);
-		memset(recv_buffer, 0, bufferSize);
-		memset(tokn_buffer, 0, bufferSize);
+		memset(send_buffer, 0, NETWORK_BUFF_SIZE);
+		memset(recv_buffer, 0, NETWORK_BUFF_SIZE);
+		clearToknMessage(tokn_message);
 
-		recvlen = receiveMessage(recv_buffer, bufferSize, sckt);
+		recvlen = receiveMessage(recv_buffer, NETWORK_BUFF_SIZE, sckt);
 		
 		if (recvlen > 0) {
 
+			// Tokenize received message
+			if (tokenizeMessage(recv_buffer, tokn_message))
+				// Drop message if received too many arguments
+				continue;
+
+			// Case for initial peer assignment
+			if (!strcmp(tokn_message->argv[0], "INIT-PEER")) {
+				if (parseMessage(tokn_message, &ap) && new) {
+					checkDestination(sckt, &ap);
+					makeAddrString(send_buffer, "INIT-GO", &sckt->myaddr, &sckt->remaddr);
+					sendMessage(send_buffer, sckt);
+				}
+			}
+			// Case for initial token creation
+			else if (!strcmp(tokn_message->argv[0], "INIT-GO") && new) {
+				if (parseMessage(tokn_message, &ap)) {
+
+					compAddr = compareAddresses(sckt, &ap);
+
+					if (compAddr == 1)
+						makeAddrString(send_buffer, "INIT-GO", &sckt->myaddr, &sckt->remaddr);
+					else if (compAddr == 0)
+						strcpy(send_buffer, recv_buffer);
+					else {
+						strcpy(send_buffer, "GO");
+						new = 0;
+					}
+
+					sendMessage(send_buffer, sckt);
+				}
+			}
 			// If received a join request, send a peer request to fit new peer into ring
-			if (!strcmp(recv_buffer, "JOIN")) {
+			else if (!strcmp(tokn_message->argv[0], "JOIN")) {
 				makeAddrString(send_buffer, "PEER", &sckt->myaddr, &sckt->remaddr);
 				putQueue(send_buffer, peer_queue);
 			}
-			else {
-
-				// Copy received message into token buffer to be parsed
-				strcpy(tokn_buffer, recv_buffer);
-
+			else if (!strcmp(tokn_message->argv[0], "GO") || !strcmp(tokn_message->argv[0], "PEER")) {
+				new = 0;
 				// Parse message to check if a change to the ring is made
-				if (parseMessage(tokn_buffer, &ap)) {
+				if (parseMessage(tokn_message, &ap)) {
 					// Check if destination address needs to be changed
 					if (checkDestination(sckt, &ap)) {
 						// Send default token message

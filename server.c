@@ -45,19 +45,19 @@ int main (int argc, char** argv) {
     // Send peer address and port to first 'numHosts - 1' hosts
     for (i = 0; i < numHosts - 1; i++) {
         memset(buffer, 0, 128);
-        makeAddrString(buffer, "PEER", &sckt->myaddr, &hostAddrs[i + 1]);
+        makeAddrString(buffer, "INIT-PEER", &sckt->myaddr, &hostAddrs[i + 1]);
         sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[i], sckt->addrlen);
     }
 
     // Send peer address and port to last host
     memset(buffer, 0, 128);
-    makeAddrString(buffer, "PEER", &sckt->myaddr, &hostAddrs[0]);
+    makeAddrString(buffer, "INIT-PEER", &sckt->myaddr, &hostAddrs[0]);
     sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[i], sckt->addrlen);
 
     // Tell the first host that joined to create and send the token
-    memset(buffer, 0, 128);
-    strcpy(buffer, "GO");
-    sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[0], sckt->addrlen);
+    // memset(buffer, 0, 128);
+    // strcpy(buffer, "GO");
+    // sendto(sckt->fd, buffer, strlen(buffer), 0, (struct sockaddr *) &hostAddrs[0], sckt->addrlen);
 
     exit(EXIT_SUCCESS);
 }
