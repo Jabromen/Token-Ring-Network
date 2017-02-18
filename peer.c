@@ -20,20 +20,6 @@
 #include <semaphore.h>
 #endif
 
-
-/*
-	The purpose of this struct is to store the command line arguments
-	to pass to other functions
-*/
-struct args_t {
-
-	u_short my_port;
-	char *hostname;
-	u_short dest_port;
-	char *filename;
-
-} args_t;
-
 void *uiThread(void *param);
 void *networkThread(void *param);
 
@@ -45,6 +31,10 @@ queue_t *message_queue;
 queue_t *peer_queue;
 
 sem_t message_queue_lock;
+
+udpsocket_t *sckt;
+
+file_t *file;
 
 int running;
 int new;
@@ -63,12 +53,18 @@ int main(int argc, char **argv) {
 	int arg_offset = !strcmp(argv[1], "-new") ? 1 : 0;
 	new = arg_offset;
 
-	// Struct used to pass command line arguments into network thread
-	struct args_t args;
-	args.my_port   = (u_short) atoi(argv[1 + arg_offset]);
-	args.hostname  = argv[2 + arg_offset];
-	args.dest_port = (u_short) atoi(argv[3 + arg_offset]);
-	args.filename  = argv[4 + arg_offset];
+	u_short my_port   = (u_short) atoi(argv[1 + arg_offset]);
+	char *hostname    = argv[2 + arg_offset];
+	u_short dest_port = (u_short) atoi(argv[3 + arg_offset]);
+	char *filename    = argv[4 + arg_offset];
+
+	// Initialize struct used to handle file IO
+	if(!(file = initFileStruct(filename)))
+		exit(EXIT_FAILURE);
+
+	// Create UDP socket
+	if(!(sckt = initUdpSocketClient(hostname, dest_port, my_port)))
+		exit(EXIT_FAILURE);
 
 	// Initialize data structures
 
@@ -89,12 +85,12 @@ int main(int argc, char **argv) {
 
 	running = 1;
 
-	if ((err = pthread_create(&network_thread, NULL, &networkThread, (void *) &args))) {
+	if ((err = pthread_create(&network_thread, NULL, &networkThread, NULL))) {
 		fprintf(stderr, "Can't create Network Thread: [%s]\n", strerror(err));
 		exit(EXIT_FAILURE);
 	}
 
-	if ((err = pthread_create(&ui_thread, NULL, &uiThread, (void *) &args))) {
+	if ((err = pthread_create(&ui_thread, NULL, &uiThread, NULL))) {
 		fprintf(stderr, "Can't create UI thread: [%s]\n", strerror(err));
 		exit(EXIT_FAILURE);
 	}
@@ -107,7 +103,12 @@ int main(int argc, char **argv) {
 	freeMessages(message_cache);
 	freeQueue(message_queue);
 	freeQueue(peer_queue);
+	freeFile(file);
+
 	sem_destroy(&message_queue_lock);
+
+	// Close socket
+	closeSocket(sckt);
 
 	exit(EXIT_SUCCESS);
 }
@@ -150,6 +151,7 @@ void *uiThread(void *param) {
 				break;
 
 			case 4:
+				// Signal network thread to shutdown by setting running flag to 0
 				running = 0;
 				pthread_exit(NULL);
 				break;
@@ -176,15 +178,6 @@ void *uiThread(void *param) {
 */
 
 void *networkThread(void *param) {
-
-	// Get command line arguments
-	struct args_t *args = (struct args_t *) param;
-
-	// Initialize struct used to handle file IO
-	file_t *file = initFileStruct(args->filename);
-
-	// Create UDP socket
-	udpsocket_t *sckt = initUdpSocketClient(args->hostname, args->dest_port, args->my_port);
 
 	// Struct used to hold address and port values for comparison
 	addrport_t ap;
@@ -305,7 +298,7 @@ void *networkThread(void *param) {
 				while (!isEmpty(message_queue)) {
 					memset(write_buffer, 0, MAX_MESSAGE_SIZE);
 					popQueue(write_buffer, message_queue);
-					writeMessage(write_buffer, numMessages++, file);
+					writeMessage(write_buffer, ++numMessages, file);
 				}
 
 				sem_post(&message_queue_lock);
@@ -313,7 +306,7 @@ void *networkThread(void *param) {
 				sendMessage(send_buffer, sckt);
 
 				// Stop listening for new messages if exiting
-				if (exiting)
+				if (exiting && isEmpty(peer_queue))
 					break;
 			}
 		}
@@ -327,16 +320,12 @@ void *networkThread(void *param) {
 	}
 
 	// Free allocated memory
-	freeFile(file);
 
 	free(send_buffer);
 	free(recv_buffer);
 	free(write_buffer);
 
 	freeToknMessage(tokn_message);
-
-	// Close socket
-	closeSocket(sckt);
 
 	// Close thread
 	pthread_exit(NULL);
